@@ -49,12 +49,13 @@ class FriendLocationController: UIViewController, UITableViewDataSource, UITable
     @objc func getFriendLocationData() {
         if networkIsReachable() {
             let url = URL(string: apiURL)!
-            let task = session.dataTask(with: url, completionHandler: { data, response, error in
+            let task = session.dataTask(with: url, completionHandler: { dataOptional, response, error in
                 do {
-                    if data == nil {
+                    guard let data = dataOptional else {
                         return
                     }
-                    let newData = try JSONDecoder().decode([Friend].self, from: data!)
+                    
+                    let newData = try JSONDecoder().decode([Friend].self, from: data)
                     
                     DispatchQueue.main.async {
                         self.friendLocationDataModel.updateData(data: newData)
@@ -125,6 +126,7 @@ class FriendLocationController: UIViewController, UITableViewDataSource, UITable
         meView.layer.borderColor = UIColor.gray.cgColor
         tableView.layoutMargins = UIEdgeInsets.zero
         tableView.separatorInset = UIEdgeInsets.zero
+        mapView.isUserInteractionEnabled = true
     }
     
     
@@ -161,7 +163,6 @@ class FriendLocationController: UIViewController, UITableViewDataSource, UITable
         locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
         mapView.showsUserLocation = true
-        mapView.isUserInteractionEnabled = true
     }
     
     

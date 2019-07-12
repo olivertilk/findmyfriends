@@ -9,6 +9,7 @@
 import UIKit
 import MapKit
 import CoreLocation
+import SystemConfiguration
 
 class FriendLocationController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
@@ -20,6 +21,7 @@ class FriendLocationController: UIViewController, UITableViewDataSource, UITable
     @IBOutlet weak var mapHeight: NSLayoutConstraint!
 
     private let locationManager: CLLocationManager = CLLocationManager()
+    private let reachability = SCNetworkReachabilityCreateWithName(nil, "www.google.com")
     
     let apiURL = "https://join.develop.humanics.com/RnJpZW5kTG9jYXRpb246dlRzTm40eU1lb3RvcmU5WURyTXQ4eUc4d2FxNnByOGI="
     
@@ -45,21 +47,38 @@ class FriendLocationController: UIViewController, UITableViewDataSource, UITable
     // MARK: - API calls
     
     @objc func getFriendLocationData() {
-        let url = URL(string: apiURL)!
-        let task = session.dataTask(with: url, completionHandler: { data, response, error in
-            do {
-                let newData = try JSONDecoder().decode([Friend].self, from: data!)
-                
-                DispatchQueue.main.async {
-                    self.friendLocationDataModel.updateData(data: newData)
-                    self.updateAnnotations(newData: newData)
-                    self.tableView.reloadData()
+        if networkIsReachable() {
+            let url = URL(string: apiURL)!
+            let task = session.dataTask(with: url, completionHandler: { data, response, error in
+                do {
+                    if data == nil {
+                        return
+                    }
+                    let newData = try JSONDecoder().decode([Friend].self, from: data!)
+                    
+                    DispatchQueue.main.async {
+                        self.friendLocationDataModel.updateData(data: newData)
+                        self.updateAnnotations(newData: newData)
+                        self.tableView.reloadData()
+                    }
+                } catch {
+                    print("JSON error: \(error)")
                 }
-            } catch {
-                print("JSON error: \(error)")
-            }
-        })
-        task.resume()
+            })
+            task.resume()
+        } else {
+            print("Network not reachable")
+        }
+    }
+    
+    func networkIsReachable() -> Bool {
+        var flags = SCNetworkReachabilityFlags()
+        SCNetworkReachabilityGetFlags(self.reachability!, &flags)
+        let isReachable = flags.contains(.reachable)
+        let needsConnection = flags.contains(.connectionRequired)
+        let canConnectAutomatically = flags.contains(.connectionOnDemand) || flags.contains(.connectionOnTraffic)
+        let canConnectWithoutUserInteraction = canConnectAutomatically && !flags.contains(.interventionRequired)
+        return isReachable && (!needsConnection || canConnectWithoutUserInteraction)
     }
     
     
